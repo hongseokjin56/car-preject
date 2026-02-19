@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    # NOTE: Spring의 placeholder 기본값 안에서 또 다른 ${...} 중첩은 정상 치환이 안되면서
+    # datasource.url 이 비어버릴 수 있습니다(= Failed to configure a DataSource 오류).
+    # ORACLE_URL 환경변수로 전체 URL을 덮어쓸 수 있고, 없으면 아래 기본값으로 동작합니다.
+    url: ${ORACLE_URL:jdbc:oracle:thin:@//localhost:1522/XEPDB1}
+    username: ${ORACLE_USER}
+    password: ${ORACLE_PASSWORD}
+  profiles:
+    active=:
+
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        default_schema: CAR_PROJECT
+        format_sql: true
+        default_batch_fetch_size: 100
+    open-in-view: true
+
+  # ✅ 파일 업로드 허용(필수)
+    servlet:
+      multipart:
+        enabled: true
+        max-file-size: 600MB
+        max-request-size: 600MB
+        file-size-threshold: 2MB
+
+
+server:
+  tomcat:
+     max-http-form-post-size: 600MB
+     max-swallow-size: 600MB
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+
+# ✅ 업로드 경로(윈도우면 예: C:/car-project_integrated/uploads)
+app:
+  upload-dir: ${UPLOAD_DIR:uploads}
+
+  thymeleaf:
+    cache: false

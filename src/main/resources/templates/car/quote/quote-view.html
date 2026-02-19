@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예상견적</title>
+
+    <!-- ✅ 프론트 리소스 유지 (프로젝트 경로에 맞게 수정) -->
+    <link rel="stylesheet" th:href="@{/main/reset.css}">
+    <link rel="stylesheet" th:href="@{/main/style.css}">
+    <link rel="stylesheet" th:href="@{/css/403motors.css}">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- ✅ 견적 Thymeleaf용 최소 보정(프론트 디자인 틀 안 깨는 선에서만) -->
+    <style>
+        /* 옵션 리스트가 너무 길어질 때 스크롤 */
+        .right-estimate .estimate{
+            max-height: 280px;
+            overflow: auto;
+            padding-right: 6px;
+        }
+        .right-estimate .estimate li{
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .right-estimate .estimate .opt-left{
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .right-estimate .estimate .opt-price{
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+        .right-estimate .estimate-tit li{
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        /* ✅ 견적서 이미지: 카드 영역 안에서만 'contain'으로 맞춤 */
+        .car-body .quote-img-frame{
+            width: 100%;
+            max-width: 340px;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* ✅ 이미지만 프레임 안에서 잘라야 해서 유지 */
+        }
+        .car-body .quote-img-frame img{
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            margin: 0 !important;
+            transform: none !important;
+        }
+
+        /* ✅ [견적서 페이지 전용]
+           이미지 아래 텍스트가 "카드 밖으로 튀어나감" + "잘림" 둘 다 방지
+           - 핵심: car-body에 overflow:hidden 금지(텍스트가 잘림)
+           - 대신 텍스트 폭/줄바꿈으로만 제어
+        */
+        .car-visual .car-body{
+            overflow: visible !important;  /* ✅ 텍스트 안 잘리게 */
+            height: auto !important;       /* ✅ 혹시 공통 CSS에 고정 height 있으면 해제 */
+            padding-bottom: 0 !important;  /* ✅ 아래 여유는 car-info에서 제어 */
+        }
+
+        /* =========================
+           ✅ 카드 하단 빈 공간 제거 + 버튼 위치(조금 위로)
+           ========================= */
+        .car .car-panner{
+            height: auto !important;
+            min-height: 0 !important;
+            padding-bottom: 0 !important;
+            overflow: visible !important;
+        }
+        .car .car-panner .car-visual{
+            height: auto !important;
+            min-height: 0 !important;
+            align-items: flex-start !important;
+        }
+        .car .car-panner .estimate-btn{
+            position: static !important;   /* ✅ absolute/fixed 해제 */
+            margin-top: -6px !important;   /* ✅ 버튼을 조금 더 위로 */
+            padding-bottom: 0 !important;
+            text-align: right;
+        }
+
+        /* =========================
+           ✅ 차량 정보(가독성 개선)
+           차량명
+           (트림명)
+           엔진명
+           색상명
+           ========================= */
+        .car-info{
+            max-width: 340px;
+            margin: 18px auto 0;
+            text-align: center;
+
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .car-brand-small{
+            font-size: 18px;
+            font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: 6px;
+        }
+
+        .car-model-main{
+            font-size: 30px;
+            font-weight: 600;
+            line-height: 1.15;
+            margin-bottom: 6px;
+        }
+
+        .car-trim-main{
+            font-size: 18px;
+            font-weight: 500;
+            opacity: 0.85;
+            margin-bottom: 14px;
+        }
+
+        .car-engine,
+        .car-color{
+            font-size: 14px;
+            opacity: 0.75;
+            margin-bottom: 4px;
+            line-height: 1.35;
+        }
+        .car-color{ margin-bottom: 0; }
+    </style>
+</head>
+
+<body>
+<!-- ============================= HEADER ============================== -->
+<header th:replace="fragments/header :: header"></header>
+
+<!-- ============================= CONTENT ============================== -->
+<section class="car">
+    <div class="car-panner">
+        <div class="main">
+            <p>나만의 차 견적</p>
+        </div>
+
+        <div class="car-visual">
+            <!-- 좌측: 차량 이미지/이름 -->
+            <div class="car-body">
+                <a th:href="@{/cars}">
+                    <div class="quote-img-frame">
+                        <img th:src="${quote.exteriorImageUrl != null ? quote.exteriorImageUrl : '/images/default_car.png'}"
+                             src="/images/default_car.png"
+                             th:alt="${quote.modelName}"
+                             alt="car">
+                    </div>
+                </a>
+
+                <!-- ✅ 가독성 개선된 차량 정보 -->
+                <div class="car-info">
+                    <!-- 브랜드(작게) -->
+                    <div class="car-brand-small" th:text="${quote.brandName}">현대</div>
+
+                    <!-- 차량명 -->
+                    <div class="car-model-main" th:text="${quote.modelName}">Santa Fe</div>
+
+                    <!-- (트림명) -->
+                    <div class="car-trim-main"
+                         th:if="${quote.trimName != null and !#strings.isEmpty(quote.trimName)}"
+                         th:text="${'(' + quote.trimName + ')'}">
+                        (Exclusive)
+                    </div>
+
+                    <!-- 엔진명: engineType + engineName 있으면 같이 표시 -->
+                    <div class="car-engine">
+                        <span th:text="${quote.engineType}">ENGINE</span>
+                        <span th:if="${quote.engineName != null and !#strings.isEmpty(quote.engineName)}">
+                            (<span th:text="${quote.engineName}">ENGINE_NAME</span>)
+                        </span>
+                    </div>
+
+                    <!-- 색상명 -->
+                    <div class="car-color" th:text="${quote.colorName}">COLOR</div>
+                </div>
+            </div>
+
+            <!-- 우측: 옵션 리스트 + 합계 -->
+            <div class="right-estimate">
+                <ul class="estimate">
+                    <li th:if="${quote.options == null or #lists.isEmpty(quote.options)}">
+                        <span class="opt-left">선택된 옵션이 없습니다.</span>
+                        <span class="opt-price">+0원</span>
+                    </li>
+
+                    <li th:each="o : ${quote.options}">
+                        <span class="opt-left">
+                            <span th:text="${'+' + o.optionName}">+옵션명</span>
+                            <span th:if="${o.includedByPackageName != null and !#strings.isEmpty(o.includedByPackageName)}"
+                                  th:text="${' (패키지: ' + o.includedByPackageName + ')'}">
+                                (패키지: -)
+                            </span>
+                        </span>
+
+                        <span class="opt-price"
+                              th:text="${(o.optionPrice != null ? (o.optionPrice >= 0 ? '+' : '') : '') + #numbers.formatInteger(o.optionPrice,0,'COMMA') + '원'}">
+                            +0원
+                        </span>
+                    </li>
+                </ul>
+
+                <ul class="estimate-tit">
+                    <li>
+                        <span>기본가</span>
+                        <strong th:text="${'+' + #numbers.formatInteger(quote.basePrice,0,'COMMA') + '원'}">+0원</strong>
+                    </li>
+                    <li>
+                        <span>컬러</span>
+                        <strong th:text="${(quote.colorPrice >= 0 ? '+' : '') + #numbers.formatInteger(quote.colorPrice,0,'COMMA') + '원'}">+0원</strong>
+                    </li>
+                    <li>
+                        <span>옵션</span>
+                        <strong th:text="${'+' + #numbers.formatInteger(quote.optionPrice,0,'COMMA') + '원'}">+0원</strong>
+                    </li>
+                    <li>
+                        <span>할인</span>
+                        <strong th:text="${(quote.discountPrice > 0 ? '-' : '') + #numbers.formatInteger(quote.discountPrice,0,'COMMA') + '원'}">-0원</strong>
+                    </li>
+                    <li>
+                        <span>총액</span>
+                        <strong th:text="${#numbers.formatInteger(quote.totalPrice,0,'COMMA') + '원'}">0원</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 버튼 영역 -->
+        <div class="estimate-btn">
+            <a th:href="@{/quotes}">견적 목록으로</a>
+        </div>
+    </div>
+</section>
+
+<!-- ============================= FOOTER ============================== -->
+<footer th:replace="fragments/footer :: footer"></footer>
+
+<script th:src="@{/css/script.js}"></script>
+</body>
+</html>
